@@ -24,6 +24,7 @@ class SecurityService(
     private val decoder: JwtDecoder,
     @Value($$"${authentication.termInMinutes}") private val authenticationTerm: Long,
     @Value($$"${registration.timeout.BanNumber}") private val registrationNumber: Long,
+    @Value($$"${authentication.throttle.enabled:true}") private val loginThrottleEnabled: Boolean,
     @Value($$"${authentication.throttle.maxAttempts:20}") private val maxLoginAttempts: Int,
     // Оба кеша — `Cache<String, Int>`: квалификаторы поставлены, чтобы разрешение не зависело
     // от имён параметров.
@@ -96,7 +97,8 @@ class SecurityService(
      * проверка bcrypt на каждый запрос, — а не только боты.
      */
     fun isLoginAllowed(clientAddress: String): Boolean =
-        (loginAttemptsCache.getOrNull(addressCacheKey(clientAddress)) ?: 0) < maxLoginAttempts
+        !loginThrottleEnabled ||
+            (loginAttemptsCache.getOrNull(addressCacheKey(clientAddress)) ?: 0) < maxLoginAttempts
 
     /**
      * Считает запрос токена — каждый, а не только неудачный.
@@ -105,6 +107,7 @@ class SecurityService(
      * счёт всех попыток покрывает и того, у кого учётные данные верные.
      */
     fun recordLoginAttempt(clientAddress: String) {
+        if (!loginThrottleEnabled) return
         val key = addressCacheKey(clientAddress)
         loginAttemptsCache[key] = (loginAttemptsCache.getOrNull(key) ?: 0) + 1
     }
