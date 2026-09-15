@@ -267,10 +267,11 @@ sha256sum init-scripts/cleaned-init.sql
 ```bash
 # 1. Образ — под платформу сервера, а не своей машины: с Apple Silicon без --platform
 #    соберётся arm64, и на x86_64-сервере он не запустится.
-docker buildx build --platform linux/amd64 -t medapp-med-app-server:issue36 --load .
-docker save medapp-med-app-server:issue36 | gzip -1 | ssh medapp 'gunzip | docker load'
-ssh medapp 'docker tag medapp-med-app-server:latest medapp-med-app-server:pre-issue36 && \
-  docker tag medapp-med-app-server:issue36 medapp-med-app-server:latest'
+docker buildx build --platform linux/amd64 -t medapp-med-app-server:next --load .
+docker save medapp-med-app-server:next | gzip -1 | ssh medapp 'gunzip | docker load'
+# Прежний образ помечается до подмены: откат — это вернуть метку latest на него.
+ssh medapp 'docker tag medapp-med-app-server:latest medapp-med-app-server:previous && \
+  docker tag medapp-med-app-server:next medapp-med-app-server:latest'
 
 # 2. Обновление действующего стека. Каталог medapp задаёт имя compose-проекта и образа.
 #    Существующие Caddyfile, секреты и RSA-пара остаются на месте.
