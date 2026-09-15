@@ -267,21 +267,24 @@ sha256sum init-scripts/cleaned-init.sql
 ```bash
 # 1. Образ — под платформу сервера, а не своей машины: с Apple Silicon без --platform
 #    соберётся arm64, и на x86_64-сервере он не запустится.
-docker buildx build --platform linux/amd64 -t medapp-med-app-server:latest --load .
-docker save medapp-med-app-server:latest | gzip -1 | ssh medapp 'gunzip | docker load'
+docker buildx build --platform linux/amd64 -t medapp-med-app-server:issue36 --load .
+docker save medapp-med-app-server:issue36 | gzip -1 | ssh medapp 'gunzip | docker load'
+ssh medapp 'docker tag medapp-med-app-server:latest medapp-med-app-server:pre-issue36 && \
+  docker tag medapp-med-app-server:issue36 medapp-med-app-server:latest'
 
-# 2. Файлы стека. Каталог называется medapp: из его имени compose берёт имя проекта, а
-#    значит, и имя образа medapp-med-app-server, под которым образ загружен выше.
+# 2. Обновление действующего стека. Каталог medapp задаёт имя compose-проекта и образа.
+#    Существующие Caddyfile, секреты и RSA-пара остаются на месте.
 ssh medapp 'mkdir -p /opt/medapp'
-rsync -rltpR compose.yaml Caddyfile db/schema.sql db/load-catalogue.sh \
+rsync -rltpR compose.yaml db/schema.sql db/load-catalogue.sh \
   db/validate-catalogue.awk db/form-vocabulary.tsv db/catalogue-health.sh \
-  init-scripts/cleaned-init.sql secrets/postgres_password secrets/registration.secret \
+  init-scripts/cleaned-init.sql \
   medapp:/opt/medapp/
-ssh medapp 'cd /opt/medapp && chown -R root:root . && chmod 700 secrets && chmod 644 secrets/*'
-
-# 3. Запуск без сборки: образ уже на месте, исходников на сервере нет.
-ssh medapp 'cd /opt/medapp && docker compose -f compose.yaml up -d --no-build --wait'
+# 3. Проверка файла и запуск с новым томом — ниже.
 ```
+
+На новом хосте дополнительно передаются `Caddyfile`, `secrets/postgres_password` и
+`secrets/registration.secret`; права выставляются по следующему абзацу. При обновлении
+действующего стека эти файлы не перезаписываются.
 
 Права на секреты — `644` на файлах внутри каталога `700`, а не `600`. Compose без swarm
 монтирует файл секрета как есть, с правами хоста, а читают его не от root: приложение —
