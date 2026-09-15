@@ -19,6 +19,7 @@ services:
       - 'POSTGRES_INITDB_ARGS=--encoding=UTF8 --lc-ctype=en_US.utf8 --lc-collate=en_US.utf8'
       - 'POSTGRES_DB=medapp-server-db'
       - 'POSTGRES_USER=medapp'
+      - 'CATALOGUE_REQUIRED=1'
       - 'POSTGRES_PASSWORD=mock-prod-password'
     volumes:
       - mock_prod_postgres_data:/var/lib/postgresql
@@ -27,9 +28,12 @@ services:
       # 02 — данные справочника, если дамп есть.
       - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ./db/load-catalogue.sh:/docker-entrypoint-initdb.d/02-load-catalogue.sh:ro
+      - ./db/validate-catalogue.awk:/catalogue-check/validate-catalogue.awk:ro
+      - ./db/form-vocabulary.tsv:/catalogue-check/form-vocabulary.tsv:ro
+      - ./db/catalogue-health.sh:/catalogue-check/catalogue-health.sh:ro
       - ./init-scripts:/catalogue:ro
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U medapp -d medapp-server-db" ]
+      test: [ "CMD", "sh", "/catalogue-check/catalogue-health.sh" ]
       interval: 5s
       timeout: 5s
       retries: 10

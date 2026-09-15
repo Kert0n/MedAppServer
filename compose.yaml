@@ -26,6 +26,7 @@ services:
       - 'POSTGRES_DB=medapp-server-db'
       # Логин секретом не является, поэтому здесь явным значением.
       - 'POSTGRES_USER=medapp'
+      - 'CATALOGUE_REQUIRED=1'
       # Официальный образ поддерживает *_FILE из коробки.
       - 'POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password'
     secrets:
@@ -37,12 +38,15 @@ services:
       # 02 — данные справочника, если дамп есть.
       - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ./db/load-catalogue.sh:/docker-entrypoint-initdb.d/02-load-catalogue.sh:ro
+      - ./db/validate-catalogue.awk:/catalogue-check/validate-catalogue.awk:ro
+      - ./db/form-vocabulary.tsv:/catalogue-check/form-vocabulary.tsv:ro
+      - ./db/catalogue-health.sh:/catalogue-check/catalogue-health.sh:ro
       # Каталогом, а не файлом: дампа в git нет, и при отсутствии файла Docker создал бы
       # на его месте каталог, из-за чего init базы падает. Отсутствие каталога безвредно.
       - ./init-scripts:/catalogue:ro
     # Порт наружу не публикуется: доступ только из сети data.
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U medapp -d medapp-server-db" ]
+      test: [ "CMD", "sh", "/catalogue-check/catalogue-health.sh" ]
       interval: 10s
       timeout: 5s
       retries: 5
