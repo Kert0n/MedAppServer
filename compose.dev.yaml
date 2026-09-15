@@ -26,6 +26,8 @@ services:
       # 02 — данные справочника, если дамп есть.
       - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ./db/load-catalogue.sh:/docker-entrypoint-initdb.d/02-load-catalogue.sh:ro
+      - ./db/validate-catalogue.awk:/catalogue-check/validate-catalogue.awk:ro
+      - ./db/form-vocabulary.tsv:/catalogue-check/form-vocabulary.tsv:ro
       # Каталогом, а не файлом: дампа в git нет, и при отсутствии файла Docker создал бы
       # на его месте каталог, из-за чего init базы падает. Отсутствие каталога безвредно.
       - ./init-scripts:/catalogue:ro

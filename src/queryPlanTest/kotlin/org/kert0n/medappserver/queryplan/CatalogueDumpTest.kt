@@ -62,9 +62,9 @@ class CatalogueDumpTest {
                 "с пустым справочником. Примените db/rewrite-catalogue-dump.py."
         )
 
-        // Ожидания берутся из самого файла: с вписанными числами тест устарел бы на первой же
-        // новой выгрузке и его бы просто поправили, не разбираясь.
+        // Число строк берётся из файла, а короткий словарь — из независимого манифеста.
         val expected = copiedRows(REAL_CATALOGUE.resolve(DUMP_NAME))
+        assertEquals(18L, expected.getValue("form_types"), "в production не должен вернуться подробный словарь")
 
         withCatalogue(REAL_CATALOGUE) { catalogue ->
             assertEquals(
@@ -140,8 +140,11 @@ class CatalogueDumpTest {
             // Та же локаль, что в compose и в TestcontainersConfiguration: в локали C кириллица
             // буквой не считается, и триграммы из русских названий не извлекаются вовсе.
             .withEnv("POSTGRES_INITDB_ARGS", INITDB_ARGS)
+            .withEnv("CATALOGUE_REQUIRED", "1")
             .withFileSystemBind(absolute("db/schema.sql"), "$INITDB_DIR/01-schema.sql", BindMode.READ_ONLY)
             .withFileSystemBind(absolute("db/load-catalogue.sh"), "$INITDB_DIR/02-load-catalogue.sh", BindMode.READ_ONLY)
+            .withFileSystemBind(absolute("db/validate-catalogue.awk"), "/catalogue-check/validate-catalogue.awk", BindMode.READ_ONLY)
+            .withFileSystemBind(absolute("db/form-vocabulary.tsv"), "/catalogue-check/form-vocabulary.tsv", BindMode.READ_ONLY)
             .withFileSystemBind(catalogue.toAbsolutePath().toString(), "/catalogue", BindMode.READ_ONLY)
             // Восемнадцать тысяч записей заливаются в таблицу с двумя GIN-индексами, и следом
             // идёт ANALYZE: умолчания в минуту здесь не хватает.

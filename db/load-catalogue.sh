@@ -1,5 +1,5 @@
 #!/bin/sh
-# Загружает data-only справочник препаратов, если файл существует.
+# Загружает только проверенный data-only справочник препаратов.
 #
 # Ожидаемый файл `/catalogue/cleaned-init.sql` создаётся rewrite-catalogue-dump.py и
 # содержит COPY для form_types, quantity_units и parsed_drugs, затем ANALYZE. Таблицы уже
@@ -11,8 +11,11 @@ set -eu
 CATALOGUE=/catalogue/cleaned-init.sql
 
 if [ ! -f "$CATALOGUE" ]; then
-    echo "load-catalogue: $CATALOGUE не найден — справочник не загружается."
-    echo "load-catalogue: приложение поднимется, но поиск по каталогу вернёт пустой список."
+    if [ "${CATALOGUE_REQUIRED:-0}" = 1 ]; then
+        echo "load-catalogue: $CATALOGUE не найден — запуск без справочника запрещён." >&2
+        exit 1
+    fi
+    echo "load-catalogue: $CATALOGUE не найден — локальный каталог пропущен."
     exit 0
 fi
 
@@ -23,6 +26,9 @@ if grep -q '^CREATE TABLE public\.drugs' "$CATALOGUE"; then
     echo "load-catalogue: примените db/rewrite-catalogue-dump.py и пересоздайте том." >&2
     exit 1
 fi
+
+awk -f /catalogue-check/validate-catalogue.awk \
+    /catalogue-check/form-vocabulary.tsv "$CATALOGUE"
 
 echo "load-catalogue: загружаю справочник из $CATALOGUE"
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -q -f "$CATALOGUE"

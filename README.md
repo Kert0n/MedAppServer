@@ -155,6 +155,10 @@ Membership и аптечка версии не имеют: join/leave меняю
 - `GET /v1/form-types` — формы выпуска
 - `GET /v1/quantity-units` — единицы измерения
 
+Формы выпуска принадлежат серверу: каталог содержит 17 распространённых базовых форм и
+«другие» для редких видов. Подробные названия исходного каталога преобразуются при загрузке;
+клиент получает только короткий словарь и преобразует внешние названия в его формы.
+
 Список сверяется с контрактом тестом `ReadmeRoutesTest`: разойтись молча он не может.
 
 ## API документация
@@ -252,33 +256,57 @@ openssl rand -hex 32 | tr -d '\n' > secrets/registration.secret
 которых нет в git. Исходники серверу не нужны — только то, что читает compose. `medapp` ниже —
 хост из `~/.ssh/config`.
 
+Перед передачей проверяется именно закрытый файл, который будет загружен. Проверка требует
+18 фиксированных форм, хотя бы одного препарата, согласованных ссылок и data-only SQL:
+
+```bash
+awk -f db/validate-catalogue.awk db/form-vocabulary.tsv init-scripts/cleaned-init.sql
+sha256sum init-scripts/cleaned-init.sql
+./gradlew test queryPlanTest
+```
+
 ```bash
 # 1. Образ — под платформу сервера, а не своей машины: с Apple Silicon без --platform
 #    соберётся arm64, и на x86_64-сервере он не запустится.
-docker buildx build --platform linux/amd64 -t medapp-med-app-server:latest --load .
-docker save medapp-med-app-server:latest | gzip -1 | ssh medapp 'gunzip | docker load'
+docker buildx build --platform linux/amd64 -t medapp-med-app-server:next --load .
+docker save medapp-med-app-server:next | gzip -1 | ssh medapp 'gunzip | docker load'
+# Прежний образ помечается до подмены: откат — это вернуть метку latest на него.
+ssh medapp 'docker tag medapp-med-app-server:latest medapp-med-app-server:previous && \
+  docker tag medapp-med-app-server:next medapp-med-app-server:latest'
 
-# 2. Файлы стека. Каталог называется medapp: из его имени compose берёт имя проекта, а
-#    значит, и имя образа medapp-med-app-server, под которым образ загружен выше.
+# 2. Обновление действующего стека. Каталог medapp задаёт имя compose-проекта и образа.
+#    Существующие Caddyfile, секреты и RSA-пара остаются на месте.
 ssh medapp 'mkdir -p /opt/medapp'
-rsync -rltpR compose.yaml Caddyfile db/schema.sql db/load-catalogue.sh \
-  init-scripts/cleaned-init.sql secrets/postgres_password secrets/registration.secret \
+rsync -rltpR compose.yaml db/schema.sql db/load-catalogue.sh \
+  db/validate-catalogue.awk db/form-vocabulary.tsv db/catalogue-health.sh \
+  init-scripts/cleaned-init.sql \
   medapp:/opt/medapp/
-ssh medapp 'cd /opt/medapp && chown -R root:root . && chmod 700 secrets && chmod 644 secrets/*'
-
-# 3. Запуск без сборки: образ уже на месте, исходников на сервере нет.
-ssh medapp 'cd /opt/medapp && docker compose -f compose.yaml up -d --no-build --wait'
+# 3. Проверка файла и запуск с новым томом — ниже.
 ```
+
+На новом хосте дополнительно передаются `Caddyfile`, `secrets/postgres_password` и
+`secrets/registration.secret`; права выставляются по следующему абзацу. При обновлении
+действующего стека эти файлы не перезаписываются.
 
 Права на секреты — `644` на файлах внутри каталога `700`, а не `600`. Compose без swarm
 монтирует файл секрета как есть, с правами хоста, а читают его не от root: приложение —
 пользователем `spring`, Postgres — после перехода на пользователя `postgres`. Файл `600`,
 принадлежащий root, им недоступен; от посторонних на хосте секреты закрывает каталог.
 
-Справочник грузится только в новый том. Чтобы перезалить его или обновить схему, том базы
-удаляется перед запуском: `docker compose -f compose.yaml down && docker volume rm
-medapp_postgres_data`. Тома Caddy не трогать: в `caddy_data` лежат TLS-сертификаты, и частый
-перевыпуск упирается в лимиты Let's Encrypt.
+Справочник грузится только в новый том. После проверки файла и передачи всех частей стека
+остановить compose, удалить **только** том базы и запустить образ без сборки:
+
+```bash
+ssh medapp 'cd /opt/medapp && sha256sum init-scripts/cleaned-init.sql && \
+  awk -f db/validate-catalogue.awk db/form-vocabulary.tsv init-scripts/cleaned-init.sql'
+ssh medapp 'cd /opt/medapp && docker compose -f compose.yaml down && \
+  docker volume rm medapp_postgres_data && docker compose -f compose.yaml up -d --no-build --wait'
+```
+
+Сумма на сервере должна совпасть с проверенной локально. Тома Caddy не трогать: в
+`caddy_data` лежат TLS-сертификаты, и частый перевыпуск упирается в лимиты Let's Encrypt.
+Проверка здоровья Postgres требует точный словарь и непустой каталог также после рестарта:
+повторный старт после сбоя init-скрипта больше не маскирует пустую базу.
 
 #### Проверка после развёртывания
 
@@ -287,6 +315,7 @@ medapp_postgres_data`. Тома Caddy не трогать: в `caddy_data` ле�
 # в таблице десятки тысяч строк, а не ноль.
 docker logs medapp-postgres-1 2>&1 | grep load-catalogue
 docker exec medapp-postgres-1 psql -U medapp -d medapp-server-db -tAc 'select count(*) from parsed_drugs'
+docker exec medapp-postgres-1 psql -U medapp -d medapp-server-db -tAc 'select count(*) from form_types'
 
 # Снаружи, из /opt/medapp: продовый секрет принимается, токен выдаётся, поиск непуст.
 B=https://medapp.ru.net
@@ -314,18 +343,17 @@ curl -s -G $B/v1/drug-templates --data-urlencode 'query=аспирин' -H "Auth
 2. `db/load-catalogue.sh` → `02-load-catalogue.sh` — данные справочника, если дамп есть.
 
 Дамп в git не попадает — это закрытые данные. Монтируется каталог `init-scripts` целиком, а не
-файл: при отсутствии файла Docker создал бы на его месте каталог, и инициализация базы упала бы.
-Если дампа нет, загрузчик сообщает об этом и пропускает шаг — приложение поднимется, но
-`GET /v1/drug-templates` вернёт пустой список.
+файл: при отсутствии файла Docker создал бы на его месте каталог. В prod и mock-prod отсутствие
+дампа или неверный словарь останавливают загрузку и делают Postgres нездоровым; dev может работать
+без закрытого каталога.
 
 Выгрузка скраппера в исходном виде для загрузки не годится: она несёт свои `CREATE TABLE` и
 спорит со схемой приложения. Преобразовать в data-only можно `db/rewrite-catalogue-dump.py`;
 загрузчик проверяет это сам и отказывается грузить необработанный дамп.
 
 Отказ загрузчика обрывает инициализацию Postgres — но только первый старт: том уже помечен
-созданным, и следующий запуск проходит мимо init-скриптов, поднимая базу со схемой и пустым
-справочником. Чтобы это не выяснялось в проде, весь путь целиком — схема, загрузчик, поиск —
-проверяется тестом:
+созданным, и следующий запуск проходит мимо init-скриптов. Healthcheck проверяет каталог и на
+повторном старте. Весь путь — схема, загрузчик, поиск — проверяется тестом:
 
 ```bash
 ./gradlew queryPlanTest
