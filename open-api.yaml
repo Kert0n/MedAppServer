@@ -994,7 +994,7 @@ components:
             \ was taken"
           examples:
           - "5.0"
-          minimum: 0.0
+          exclusiveMinimum: 0.0
           pattern: "^(?!0+(\\.0+)?$)\\d{1,13}(\\.\\d{1,6})?$"
           example: null
         drugVersion:
@@ -1019,7 +1019,7 @@ components:
           description: "Claim after the offline session, absolute"
           examples:
           - "20.0"
-          minimum: 0.0
+          exclusiveMinimum: 0.0
           pattern: "^(?!0+(\\.0+)?$)\\d{1,13}(\\.\\d{1,6})?$"
           example: null
         version:
@@ -1041,7 +1041,7 @@ components:
           description: "Amount taken, greater than zero"
           examples:
           - "2.0"
-          minimum: 0.0
+          exclusiveMinimum: 0.0
           pattern: "^(?!0+(\\.0+)?$)\\d{1,13}(\\.\\d{1,6})?$"
           example: null
         version:
@@ -1068,7 +1068,7 @@ components:
             \ left in the package."
           examples:
           - "20.0"
-          minimum: 0.0
+          exclusiveMinimum: 0.0
           pattern: "^(?!0+(\\.0+)?$)\\d{1,13}(\\.\\d{1,6})?$"
           example: null
         version:
@@ -1154,7 +1154,7 @@ components:
           description: "Initial stock, greater than zero"
           examples:
           - "100.0"
-          minimum: 0.0
+          exclusiveMinimum: 0.0
           pattern: "^(?!0+(\\.0+)?$)\\d{1,13}(\\.\\d{1,6})?$"
           example: null
         quantityUnitId:
@@ -1272,7 +1272,7 @@ components:
           description: "New reserved amount, greater than zero"
           examples:
           - "15.0"
-          minimum: 0.0
+          exclusiveMinimum: 0.0
           pattern: "^(?!0+(\\.0+)?$)\\d{1,13}(\\.\\d{1,6})?$"
           example: null
         version:
@@ -1306,7 +1306,7 @@ components:
             \ Reservations are left alone."
           examples:
           - "120.0"
-          minimum: 0.0
+          exclusiveMinimum: 0.0
           pattern: "^(?!0+(\\.0+)?$)\\d{1,13}(\\.\\d{1,6})?$"
           example: null
         quantityUnitId:
