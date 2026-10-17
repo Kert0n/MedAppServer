@@ -20,6 +20,15 @@ repositories {
     mavenCentral()
 }
 
+// Поверх BOM Spring Boot 4.1.1: его Tomcat 11.0.24 и Jackson 3.1.5 / 2.21.5 закрыты
+// оповещениями (три critical у Tomcat, остальные — в jackson-core и jackson-databind
+// обеих веток), а патч-релиза Boot с исправленными версиями ещё нет. Версии взяты на тех же
+// линиях, что у Boot, — только патч. Пины снимаются вместе с переходом на Boot, чей BOM
+// приносит не ниже этих.
+extra["tomcat.version"] = "11.0.27"
+extra["jackson-bom.version"] = "3.1.7"
+extra["jackson-2-bom.version"] = "2.21.7"
+
 dependencies {
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1")
     // Стартер под Spring Boot 4 — отдельный артефакт, как вофициальном samples/exposed-spring.
