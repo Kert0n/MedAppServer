@@ -34,8 +34,8 @@ dependencies {
     // Стартер под Spring Boot 4 — отдельный артефакт, как вофициальном samples/exposed-spring.
     // Обычный exposed-spring-boot-starter собран под Boot 3 и ищет автоконфигурацию по
     // старым адресам.
-    implementation("org.jetbrains.exposed:exposed-spring-boot4-starter:1.5.1")
-    implementation("org.jetbrains.exposed:exposed-jdbc:1.5.1")
+    implementation("org.jetbrains.exposed:exposed-spring-boot4-starter:1.6.0")
+    implementation("org.jetbrains.exposed:exposed-jdbc:1.6.0")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
