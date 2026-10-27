@@ -1,7 +1,7 @@
 plugins {
     kotlin("jvm") version "2.4.21"
     kotlin("plugin.spring") version "2.4.21"
-    id("org.springframework.boot") version "4.1.1"
+    id("org.springframework.boot") version "4.1.2"
     id("io.spring.dependency-management") version "1.1.7"
     kotlin("plugin.serialization") version "2.4.21"
 }
@@ -30,12 +30,12 @@ extra["jackson-bom.version"] = "3.1.7"
 extra["jackson-2-bom.version"] = "2.21.7"
 
 dependencies {
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.2.0")
     // Стартер под Spring Boot 4 — отдельный артефакт, как вофициальном samples/exposed-spring.
     // Обычный exposed-spring-boot-starter собран под Boot 3 и ищет автоконфигурацию по
     // старым адресам.
-    implementation("org.jetbrains.exposed:exposed-spring-boot4-starter:1.5.1")
-    implementation("org.jetbrains.exposed:exposed-jdbc:1.5.1")
+    implementation("org.jetbrains.exposed:exposed-spring-boot4-starter:1.6.0")
+    implementation("org.jetbrains.exposed:exposed-jdbc:1.6.0")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
